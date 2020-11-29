@@ -1,0 +1,2 @@
+Need to make sure that my ReduceCost matrix is all in order
+THE ONLY LEAVES THAT ARE PRUNED ARE THE ONES WITH A COST OF INFINITY
