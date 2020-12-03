@@ -36,7 +36,7 @@ class PointLineView( QWidget ):
 
 		self.pointList	= {}
 		self.edgeList	= {}
-		self.labelList	 = {}
+		self.labelList	= {}
 		self.status_bar = status_bar
 		self.data_range = data_range
 		self.start_pt = None

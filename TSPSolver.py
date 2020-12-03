@@ -16,6 +16,9 @@ import numpy as np
 from TSPClasses import *
 import heapq
 import itertools
+import matrixnode
+from matrixnode import matrixnode
+import copy
 
 
 
@@ -25,8 +28,13 @@ class TSPSolver:
 
 	def setupWithScenario( self, scenario ):
 		self._scenario = scenario
-		self.bssf = None
-		self.priorityQueue = None
+		self.bssf = math.inf
+		self.priorityQueue = []
+		self.totalPrunes = 0
+		self.maxQueSize = 0
+		self.totalStates = 0
+		self.cities = []
+		# 12
 
 
 	''' <summary>
@@ -86,132 +94,163 @@ class TSPSolver:
 
 	def greedy( self,time_allowance=60.0 ):
 		pass
-	
-	
-	
-	''' <summary>
-		This is the entry point for the branch-and-bound algorithm that you will implement
-		</summary>
-		<returns>results dictionary for GUI that contains three ints: cost of best solution, 
-		time spent to find best solution, total number solutions found during search (does
-		not include the initial BSSF), the best solution found, and three more ints: 
-		max queue size, total number of states created, and number of pruned states.</returns> 
-	'''
 
-	def reduceCost(self, matrix):
-		#TODO: Need to make sure that this works
+
+	def reduceCost(self, matrix, avoidRows, avoidCols):
 		totalCost = 0
-		for row in matrix:
+		#loop through the matrix
+		for i in range(len(matrix)):
+			if i in avoidRows:
+				continue
 			hasZero = False
-			for element in row:
-				if element == 0:
+			temp = []
+			# Check if it has a 0, store values
+			for j in range(len(matrix)):
+				temp.append(matrix[i][j])
+				if matrix[i][j] == 0:
+					hasZero = True
+			#get minVal from stored vals, reduce row
+			if not hasZero:
+				minVal = min(temp)
+				for j in range(len(matrix)):
+					if matrix[i][j] != math.inf:
+						matrix[i][j] -= minVal
+				totalCost += minVal
+
+		for i in range(len(matrix)):
+			if i in avoidCols:
+				continue
+			hasZero = False
+			temp = []
+			for j in range(len(matrix)):
+				temp.append(matrix[j][i])
+				if matrix[j][i] == 0:
 					hasZero = True
 			if not hasZero:
-				minVal = min(row)
-				for element in row:
-					if element != math.inf:
-						element -= minVal
+				minVal = min(temp)
+				for j in range(len(matrix)):
+					if matrix[j][i] != math.inf:
+						matrix[j][i] -= minVal
 				totalCost += minVal
-		for column in matrix:
-			hasZero = False
-			for element in column:
-				if element == 0:
-					hasZero = True
-			if not hasZero:
-				minVal = min(column)
-				for element in column:
-					if element != math.inf:
-						element -= minVal
-				totalCost += minVal
+		return totalCost, matrix
 
 	def makeInfinities(self, row, col, matrix):
-		#TODO: Need to make sure that this works
+		# Creating the inf row and col
 		for i in range(0, len(matrix)):
 			matrix[row][i] = math.inf
-		for i in range(0, len(matrix)):
 			matrix[i][col] = math.inf
+		#creating the single point inf
+		matrix[col][row] = math.inf
+		return matrix
 
-	def checkValidPath(self):
-		#for this I should make sure that the length of the list is the some preset length of all the cities
-		#If i'm going to go this route, I need to make another array that keeps track of the priority queue and its cities,
-		#And I also need to make a curVisit list that will have all the cities from the popped array
-		#OR I can just make some kind of checking function (probably the easier route)
-		#TODO:Implement some sort of fast checker function(keep the other one as backup)
-		pass
+	def getAvoids(self, path):
+		avoidRows = []
+		avoidCols = []
+		#Avoiding the rows and cols that are all inf.
+		for i in range(len(path) - 1):
+			avoidRows.append(path[i])
+		for i in range(1, len(path)):
+			avoidCols.append(path[i])
+		return avoidRows, avoidCols
 
-	def insertIntoQueue(self, parentMatrix, curPos):
-		#Can probably just pass in the base array and then work from there
-		#Prune the infinities ONLY
-		#only inserting the valid states into queue
-		#TODO: need to call make infinity function on this before I send it in here
-		listCityPath = []
-		listArrays = []  # Need to populate this with the arrays that actually have a path
+	def insertIntoQueue(self, parentNode, curPos):
+		#TODO: consider both bound and tree depth(need to add tree depth)
+		parentMatrix = parentNode.getMatrix()
+		listChildNodes = []# Need to populate this with the arrays that actually have a path
+
 		for i in range(len(parentMatrix)):
-			if parentMatrix[curPos][i] == math.inf:
-				listCityPath.append(i)
+			#add the state
+			self.totalStates += 1
+			temp = parentMatrix[curPos][i]
+			if parentMatrix[curPos][i] != math.inf:
+				path = copy.deepcopy(parentNode.getPath())
+				if i == path[0] and len(path) < len(parentMatrix):
+					continue #avoid traveling back before starting
+				#infinity out
+				childMatrix = self.makeInfinities(curPos, i, copy.deepcopy(parentMatrix))
+				path.append(i)
+				#get the cols and rows to avoid for reduced cost matrix
+				avoidRows, avoidCols = self.getAvoids(path)
+				cost, childMatrix = self.reduceCost(childMatrix, avoidRows, avoidCols)
+				#get the total cost of the parent bound, the cost to the next point, and reduced cost matrix
+				cost = cost + parentNode.getBound() + parentMatrix[curPos][i]
+				if self.bssf == None or self.bssf > cost:
+					childNode = (matrixnode(childMatrix, cost, path))
+					inserted = False
+					#Sort insert into the list
+					for j in range(len(listChildNodes)): #for 8 change to prio queue, and account for depth
+						if childNode.getBound() > listChildNodes[j].getBound():
+							listChildNodes.insert(j, childNode)
+							inserted = True
+					if len(listChildNodes) == 0 or not inserted:
+						listChildNodes.append(childNode)
+				else:
+					self.totalPrunes += 1
 			else:
-				#TODO: PRUNE HERE
-				totalPrunes = 0
-				pass
-		for i in range(len(listCityPath)):
-			#Now we're going to pass it into infinity
-			#Then append it to listArrays 
-			#TODO: Make sure that original matrix is not overidden after passed into inifity
-			pass
-		#Then we reduce cost these matrixes
-		#Then we add them to the queue
+				self.totalPrunes += 1
+		self.priorityQueue += listChildNodes
 
-		'''
-		listPos = []
-		for i in range(0, len(listArrays)):
-			listPos.append(self.reduceCost(listArrays[i]))
-		queuedArrays = []
-		while len(listArrays) > 0:
-			biggestVal = listPos[0]
-			for i in range(0,len(listPos)):
-				if listPos(i) > biggestVal:
-					biggestVal = listPos(i)
-					#largest, so need to add
-					queuedArrays.append(listArrays[i])
-					#TODO: Find out how to pop the i'th value for prio queue
-					listArrays.remove(i)
-		#TODO: Make sure this works (is it even necessary?)
-		#TODO: smallest cost array should be on top so we can directly add this to priority queue
-		return queuedArrays
-		'''
-
-	def branchRecursion(self, time_allowance, matrix):
-		#TODO:Write this function and should almost be done
-		#probably need to follow the slides for this one
-		pass
+	def checkQueueSize(self):
+		#Checking the max queue size every iteration
+		if len(self.priorityQueue) > self.maxQueSize:
+			self.maxQueSize = len(self.priorityQueue)
 
 	def branchAndBound( self, time_allowance=60.0 ):
-		#TODO:See what 'cities' returns in default
-		#TODO:Make a double matrix with the length
-		#TODO:Write the recursive function
-		#This function is just all setup for the recursive function.
-		results = {}
-		cities = self._scenario.getCities()
-		ncities = len(cities)
+		results = self.defaultRandomTour()
+		self.cities = self._scenario.getCities()
+		ncities = len(self.cities)
 		foundTour = False
-		count = 0
-		bssf = None
+		count = 1
+		self.bssf = results['cost']
 		start_time = time.time()
-		if time.time() - start_time < time_allowance:
-			return "Timeout"
-		#steal initial from random?
-
+		#initialize the matrix with costs
+		initialMatrix = [[0 for x in range(ncities)] for y in range(ncities)]
+		for i in range(len(self.cities)):
+			for j in range(len(self.cities)):
+				initialMatrix[i][j] = self.cities[i].costTo(self.cities[j])
+		#reduce the initial matrix
+		reduceCost, initialMatrix = self.reduceCost(initialMatrix,[],[])
+		self.priorityQueue.append(matrixnode(initialMatrix, reduceCost, [0]))
+		bestPath = None
+		#start the algorithm
+		while len(self.priorityQueue) > 0:
+			self.checkQueueSize()
+			node = self.priorityQueue.pop()
+			path = node.getPath()
+			#see if the bound is greater than the bssf
+			if node.getBound() > self.bssf:
+				self.totalPrunes += 1
+				continue
+			#check to see if we have crossed the time allowance
+			if time.time() - start_time > time_allowance:
+				break
+			if len(path) == ncities:
+				#only update bssf if path is good.
+				if node.getBound() < self.bssf:
+					count += 1
+					foundTour = True
+					self.bssf = node.getBound()
+					bestPath = node.getPath()
+			else:
+				self.insertIntoQueue(node, path[len(path) - 1])
+		#Out of the loop, so get the actual path
+		if foundTour:
+			finalPath = []
+			for i in range(len(bestPath)):
+				finalPath.append(self.cities[bestPath[i]])
+			'''for i in range(len(bestPath) - 1):
+				if initialMatrix[bestPath[i]][bestPath[i + 1]]  == math.inf:
+					print("oops")'''
+			self.bssf = TSPSolution(finalPath)
 		end_time = time.time()
-		results['cost'] = bssf.cost if foundTour else math.inf
+		results['cost'] = self.bssf.cost if foundTour else math.inf
 		results['time'] = end_time - start_time
 		results['count'] = count
-		results['soln'] = bssf
-		results['max'] = None
-		results['total'] = None
-		results['pruned'] = None
+		results['soln'] = self.bssf if foundTour else None
+		results['max'] = self.maxQueSize
+		results['total'] = self.totalStates
+		results['pruned'] = self.totalPrunes
 		return results
-
-
 
 	''' <summary>
 		This is the entry point for the algorithm you'll write for your group project.
@@ -221,8 +260,12 @@ class TSPSolver:
 		best solution found.  You may use the other three field however you like.
 		algorithm</returns> 
 	'''
+	def fancy( self,time_allowance=60.0):
+		#annealing
+		#500 random solutions
+		#comparisons
+		#takes out solutions
 		
-	def fancy( self,time_allowance=60.0 ):
 		pass
 		
 

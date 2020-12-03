@@ -1,2 +1,51 @@
-Need to make sure that my ReduceCost matrix is all in order
-THE ONLY LEAVES THAT ARE PRUNED ARE THE ONES WITH A COST OF INFINITY
+-Keeps adding itself to the prio queue
+
+-Probably gets solved when I get to stop adding itself
+-This should be solved when I fix my inifity function
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TA Q's
+-If we end up backtracking to another piece in the prio queue, do we reset bssf?
+    -Don't set BSSF until  I get a solution
+-What is pruning
+    -Pop off queue & greater than bssf
+    -Child lower bound is greater than BSSF
+
+Priority queue:
+
+ SO:
+    -Set BSSF after solution is found
+    -Pruning includes <BSSF also.
+    -Need to continually go to make to find the best solution
+
+
+- Need to keep count of how many states there are(easy)
+- Need to keep track of queue size at it's largest
+
+Functions to finish:
+    -Branch and bound()
+    -Insert to queue
+    -Check valid path
+    -Make infinities
+    -
+
+Functions that are working:
+    -Reduced cost()
+

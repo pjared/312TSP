@@ -198,7 +198,7 @@ import Qt.test.qtestroot 1.0
     }
     \endcode
 
-    The mousePress(), mouseRelease(), mouseClick(), mouseDoubleClick(), mouseDoubleClickSequence()
+    The mousePress(), mouseRelease(), mouseClick(), mouseDoubleClickSequence()
     and mouseMove() methods can be used to simulate mouse events in a
     similar fashion.
 
@@ -518,6 +518,75 @@ Item {
 
         if (!qtest_results.verify(expressionFunction(), msg, util.callerFile(), util.callerLine()))
             throw new Error("QtQuickTest::fail")
+    }
+
+    /*!
+        \since 5.13
+        \qmlmethod bool TestCase::isPolishScheduled(object item)
+
+        Returns \c true if \l {QQuickItem::}{updatePolish()} has not been called
+        on \a item since the last call to \l {QQuickItem::}{polish()},
+        otherwise returns \c false.
+
+        When assigning values to properties in QML, any layouting the item
+        must do as a result of the assignment might not take effect immediately,
+        but can instead be postponed until the item is polished. For these cases,
+        you can use this function to ensure that the item has been polished
+        before the execution of the test continues. For example:
+
+        \code
+            verify(isPolishScheduled(item))
+            verify(waitForItemPolished(item))
+        \endcode
+
+        Without the call to \c isPolishScheduled() above, the
+        call to \c waitForItemPolished() might see that no polish
+        was scheduled and therefore pass instantly, assuming that
+        the item had already been polished. This function
+        makes it obvious why an item wasn't polished and allows tests to
+        fail early under such circumstances.
+
+        \sa waitForItemPolished(), QQuickItem::polish(), QQuickItem::updatePolish()
+    */
+    function isPolishScheduled(item) {
+        if (!item || typeof item !== "object") {
+            qtest_results.fail("Argument must be a valid Item; actual type is " + typeof item,
+                util.callerFile(), util.callerLine())
+            throw new Error("QtQuickTest::fail")
+        }
+
+        return qtest_results.isPolishScheduled(item)
+    }
+
+    /*!
+        \since 5.13
+        \qmlmethod bool waitForItemPolished(object item, int timeout = 5000)
+
+        Waits for \a timeout milliseconds or until
+        \l {QQuickItem::}{updatePolish()} has been called on \a item.
+
+        Returns \c true if \c updatePolish() was called on \a item within
+        \a timeout milliseconds, otherwise returns \c false.
+
+        \sa isPolishScheduled(), QQuickItem::polish(), QQuickItem::updatePolish()
+    */
+    function waitForItemPolished(item, timeout) {
+        if (!item || typeof item !== "object") {
+            qtest_results.fail("First argument must be a valid Item; actual type is " + typeof item,
+                util.callerFile(), util.callerLine())
+            throw new Error("QtQuickTest::fail")
+        }
+
+        if (timeout !== undefined && typeof(timeout) != "number") {
+            qtest_results.fail("Second argument must be a number; actual type is " + typeof timeout,
+                util.callerFile(), util.callerLine())
+            throw new Error("QtQuickTest::fail")
+        }
+
+        if (!timeout)
+            timeout = 5000
+
+        return qtest_results.waitForItemPolished(item, timeout)
     }
 
     /*!
@@ -850,12 +919,12 @@ Item {
 
         Additionally, the returned image object has the following methods:
         \list
-        \li red(x, y) Returns the red channel value of the pixel at \a x, \a y position
-        \li green(x, y) Returns the green channel value of the pixel at \a x, \a y position
-        \li blue(x, y) Returns the blue channel value of the pixel at \a x, \a y position
-        \li alpha(x, y) Returns the alpha channel value of the pixel at \a x, \a y position
-        \li pixel(x, y) Returns the color value of the pixel at \a x, \a y position
-        \li equals(image) Returns \c true if this image is identical to \a image -
+        \li \c {red(x, y)} Returns the red channel value of the pixel at \e x, \e y position
+        \li \c {green(x, y)} Returns the green channel value of the pixel at \e x, \e y position
+        \li \c {blue(x, y)} Returns the blue channel value of the pixel at \e x, \e y position
+        \li \c {alpha(x, y)} Returns the alpha channel value of the pixel at \e x, \e y position
+        \li \c {pixel(x, y)} Returns the color value of the pixel at \e x, \e y position
+        \li \c {equals(image)} Returns \c true if this image is identical to \e image -
             see \l QImage::operator== (since 5.6)
 
         For example:
@@ -869,7 +938,8 @@ Item {
         var newImage = grabImage(rect);
         verify(!newImage.equals(image));
         \endcode
-        \li save(path) Saves the image to the given \a path. If the image cannot
+
+        \li \c {save(path)} Saves the image to the given \e path. If the image cannot
         be saved, an exception will be thrown. (since 5.10)
 
         This can be useful to perform postmortem analysis on failing tests, for
@@ -886,8 +956,6 @@ Item {
         \endcode
 
         \endlist
-
-        \sa
     */
     function grabImage(item) {
         return qtest_results.grabImage(item);
@@ -1152,7 +1220,7 @@ Item {
     /*!
         \qmlmethod TestCase::keyPress(key, modifiers = Qt.NoModifier, delay = -1)
 
-        Simulates pressing a \a key with an optional \a modifier on the currently
+        Simulates pressing a \a key with optional \a modifiers on the currently
         focused item.  If \a delay is larger than 0, the test will wait for
         \a delay milliseconds.
 
@@ -1180,7 +1248,7 @@ Item {
     /*!
         \qmlmethod TestCase::keyRelease(key, modifiers = Qt.NoModifier, delay = -1)
 
-        Simulates releasing a \a key with an optional \a modifier on the currently
+        Simulates releasing a \a key with optional \a modifiers on the currently
         focused item.  If \a delay is larger than 0, the test will wait for
         \a delay milliseconds.
 
@@ -1206,7 +1274,7 @@ Item {
     /*!
         \qmlmethod TestCase::keyClick(key, modifiers = Qt.NoModifier, delay = -1)
 
-        Simulates clicking of \a key with an optional \a modifier on the currently
+        Simulates clicking of \a key with optional \a modifiers on the currently
         focused item.  If \a delay is larger than 0, the test will wait for
         \a delay milliseconds.
 
@@ -1252,7 +1320,7 @@ Item {
     /*!
         \qmlmethod TestCase::mousePress(item, x = item.width / 2, y = item.height / 2, button = Qt.LeftButton, modifiers = Qt.NoModifier, delay = -1)
 
-        Simulates pressing a mouse \a button with an optional \a modifier
+        Simulates pressing a mouse \a button with optional \a modifiers
         on an \a item.  The position is defined by \a x and \a y.
         If \a x or \a y are not defined the position will be the center of \a item.
         If \a delay is specified, the test will wait for the specified amount of
@@ -1263,7 +1331,7 @@ Item {
         If \a item is obscured by another item, or a child of \a item occupies
         that position, then the event will be delivered to the other item instead.
 
-        \sa mouseRelease(), mouseClick(), mouseDoubleClick(), mouseDoubleClickSequence(), mouseMove(), mouseDrag(), mouseWheel()
+        \sa mouseRelease(), mouseClick(), mouseDoubleClickSequence(), mouseMove(), mouseDrag(), mouseWheel()
     */
     function mousePress(item, x, y, button, modifiers, delay) {
         if (!qtest_verifyItem(item, "mousePress"))
@@ -1286,7 +1354,7 @@ Item {
     /*!
         \qmlmethod TestCase::mouseRelease(item, x = item.width / 2, y = item.height / 2, button = Qt.LeftButton, modifiers = Qt.NoModifier, delay = -1)
 
-        Simulates releasing a mouse \a button with an optional \a modifier
+        Simulates releasing a mouse \a button with optional \a modifiers
         on an \a item.  The position of the release is defined by \a x and \a y.
         If \a x or \a y are not defined the position will be the center of \a item.
         If \a delay is specified, the test will wait for the specified amount of
@@ -1297,7 +1365,7 @@ Item {
         If \a item is obscured by another item, or a child of \a item occupies
         that position, then the event will be delivered to the other item instead.
 
-        \sa mousePress(), mouseClick(), mouseDoubleClick(), mouseDoubleClickSequence(), mouseMove(), mouseDrag(), mouseWheel()
+        \sa mousePress(), mouseClick(), mouseDoubleClickSequence(), mouseMove(), mouseDrag(), mouseWheel()
     */
     function mouseRelease(item, x, y, button, modifiers, delay) {
         if (!qtest_verifyItem(item, "mouseRelease"))
@@ -1320,7 +1388,7 @@ Item {
     /*!
         \qmlmethod TestCase::mouseDrag(item, x, y, dx, dy, button = Qt.LeftButton, modifiers = Qt.NoModifier, delay = -1)
 
-        Simulates dragging the mouse on an \a item with \a button pressed and an optional \a modifier.
+        Simulates dragging the mouse on an \a item with \a button pressed and optional \a modifiers
         The initial drag position is defined by \a x and \a y,
         and drag distance is defined by \a dx and \a dy. If \a delay is specified,
         the test will wait for the specified amount of milliseconds before releasing the button.
@@ -1330,7 +1398,7 @@ Item {
         If \a item is obscured by another item, or a child of \a item occupies
         that position, then the event will be delivered to the other item instead.
 
-        \sa mousePress(), mouseClick(), mouseDoubleClick(), mouseDoubleClickSequence(), mouseMove(), mouseRelease(), mouseWheel()
+        \sa mousePress(), mouseClick(), mouseDoubleClickSequence(), mouseMove(), mouseRelease(), mouseWheel()
     */
     function mouseDrag(item, x, y, dx, dy, button, modifiers, delay) {
         if (!qtest_verifyItem(item, "mouseDrag"))
@@ -1349,19 +1417,23 @@ Item {
         // Divide dx and dy to have intermediate mouseMove while dragging
         // Fractions of dx/dy need be superior to the dragThreshold
         // to make the drag works though
-        var ddx = Math.round(dx/3)
-        if (ddx < (util.dragThreshold + 1))
-            ddx = 0
-        var ddy = Math.round(dy/3)
-        if (ddy < (util.dragThreshold + 1))
-            ddy = 0
+        var intermediateDx = Math.round(dx/3)
+        if (Math.abs(intermediateDx) < (util.dragThreshold + 1))
+            intermediateDx = 0
+        var intermediateDy = Math.round(dy/3)
+        if (Math.abs(intermediateDy) < (util.dragThreshold + 1))
+            intermediateDy = 0
 
         mousePress(item, x, y, button, modifiers, delay)
-        //trigger dragging
-        mouseMove(item, x + util.dragThreshold + 1, y + util.dragThreshold + 1, moveDelay, button)
-        if (ddx > 0 || ddy > 0) {
-            mouseMove(item, x + ddx, y + ddy, moveDelay, button)
-            mouseMove(item, x + 2*ddx, y + 2*ddy, moveDelay, button)
+
+        // Trigger dragging by dragging past the drag threshold, but making sure to only drag
+        // along a certain axis if a distance greater than zero was given for that axis.
+        var dragTriggerXDistance = dx > 0 ? (util.dragThreshold + 1) : 0
+        var dragTriggerYDistance = dy > 0 ? (util.dragThreshold + 1) : 0
+        mouseMove(item, x + dragTriggerXDistance, y + dragTriggerYDistance, moveDelay, button)
+        if (intermediateDx !== 0 || intermediateDy !== 0) {
+            mouseMove(item, x + intermediateDx, y + intermediateDy, moveDelay, button)
+            mouseMove(item, x + 2*intermediateDx, y + 2*intermediateDy, moveDelay, button)
         }
         mouseMove(item, x + dx, y + dy, moveDelay, button)
         mouseRelease(item, x + dx, y + dy, button, modifiers, delay)
@@ -1370,7 +1442,7 @@ Item {
     /*!
         \qmlmethod TestCase::mouseClick(item, x = item.width / 2, y = item.height / 2, button = Qt.LeftButton, modifiers = Qt.NoModifier, delay = -1)
 
-        Simulates clicking a mouse \a button with an optional \a modifier
+        Simulates clicking a mouse \a button with optional \a modifiers
         on an \a item.  The position of the click is defined by \a x and \a y.
         If \a x and \a y are not defined the position will be the center of \a item.
         If \a delay is specified, the test will wait for the specified amount of
@@ -1381,7 +1453,7 @@ Item {
         If \a item is obscured by another item, or a child of \a item occupies
         that position, then the event will be delivered to the other item instead.
 
-        \sa mousePress(), mouseRelease(), mouseDoubleClick(), mouseDoubleClickSequence(), mouseMove(), mouseDrag(), mouseWheel()
+        \sa mousePress(), mouseRelease(), mouseDoubleClickSequence(), mouseMove(), mouseDrag(), mouseWheel()
     */
     function mouseClick(item, x, y, button, modifiers, delay) {
         if (!qtest_verifyItem(item, "mouseClick"))
@@ -1403,8 +1475,9 @@ Item {
 
     /*!
         \qmlmethod TestCase::mouseDoubleClick(item, x = item.width / 2, y = item.height / 2, button = Qt.LeftButton, modifiers = Qt.NoModifier, delay = -1)
+        \deprecated
 
-        Simulates double-clicking a mouse \a button with an optional \a modifier
+        Simulates double-clicking a mouse \a button with optional \a modifiers
         on an \a item.  The position of the click is defined by \a x and \a y.
         If \a x and \a y are not defined the position will be the center of \a item.
         If \a delay is specified, the test will wait for the specified amount of
@@ -1439,7 +1512,7 @@ Item {
         \qmlmethod TestCase::mouseDoubleClickSequence(item, x = item.width / 2, y = item.height / 2, button = Qt.LeftButton, modifiers = Qt.NoModifier, delay = -1)
 
         Simulates the full sequence of events generated by double-clicking a mouse
-        \a button with an optional \a modifier on an \a item.
+        \a button with optional \a modifiers on an \a item.
 
         This method reproduces the sequence of mouse events generated when a user makes
         a double click: Press-Release-Press-DoubleClick-Release.
@@ -1456,7 +1529,7 @@ Item {
 
         This QML method was introduced in Qt 5.5.
 
-        \sa mouseDoubleClick(), mousePress(), mouseRelease(), mouseClick(), mouseMove(), mouseDrag(), mouseWheel()
+        \sa mousePress(), mouseRelease(), mouseClick(), mouseMove(), mouseDrag(), mouseWheel()
     */
     function mouseDoubleClickSequence(item, x, y, button, modifiers, delay) {
         if (!qtest_verifyItem(item, "mouseDoubleClickSequence"))
@@ -1488,7 +1561,7 @@ Item {
         If \a item is obscured by another item, or a child of \a item occupies
         that position, then the event will be delivered to the other item instead.
 
-        \sa mousePress(), mouseRelease(), mouseClick(), mouseDoubleClick(), mouseDoubleClickSequence(), mouseDrag(), mouseWheel()
+        \sa mousePress(), mouseRelease(), mouseClick(), mouseDoubleClickSequence(), mouseDrag(), mouseWheel()
     */
     function mouseMove(item, x, y, delay, buttons) {
         if (!qtest_verifyItem(item, "mouseMove"))
@@ -1505,7 +1578,7 @@ Item {
     /*!
         \qmlmethod TestCase::mouseWheel(item, x, y, xDelta, yDelta, button = Qt.LeftButton, modifiers = Qt.NoModifier, delay = -1)
 
-        Simulates rotating the mouse wheel on an \a item with \a button pressed and an optional \a modifier.
+        Simulates rotating the mouse wheel on an \a item with \a button pressed and optional \a modifiers.
         The position of the wheel event is defined by \a x and \a y.
         If \a delay is specified, the test will wait for the specified amount of milliseconds before releasing the button.
 
@@ -1516,7 +1589,7 @@ Item {
 
         The \a xDelta and \a yDelta contain the wheel rotation distance in eighths of a degree. see \l QWheelEvent::angleDelta() for more details.
 
-        \sa mousePress(), mouseClick(), mouseDoubleClick(), mouseDoubleClickSequence(), mouseMove(), mouseRelease(), mouseDrag(), QWheelEvent::angleDelta()
+        \sa mousePress(), mouseClick(), mouseDoubleClickSequence(), mouseMove(), mouseRelease(), mouseDrag(), QWheelEvent::angleDelta()
     */
     function mouseWheel(item, x, y, xDelta, yDelta, buttons, modifiers, delay) {
         if (!qtest_verifyItem(item, "mouseWheel"))
@@ -1563,7 +1636,7 @@ Item {
 
             TestCase {
                 name: "ItemTests"
-                when: area.pressed
+                when: windowShown
                 id: test1
 
                 function test_touch() {
