@@ -13,6 +13,7 @@ class TSPSolution:
 		self.route = listOfCities
 		self.cost = self._costOfRoute()
 		#print( [c._index for c in listOfCities] )
+		#testcomment
 
 	def _costOfRoute( self ):
 		cost = 0
