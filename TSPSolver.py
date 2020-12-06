@@ -341,7 +341,7 @@ class TSPSolver:
 		<returns>results dictionary for GUI that contains three ints: cost of best solution, 
 		time spent to find best solution, total number of solutions found during search, the 
 		best solution found.  You may use the other three field however you like.
-		algorithm</returns> 
+		algorithm</returns>
 	'''
 	def fancy(self, time_allowance=60.0):
 		results = {}
