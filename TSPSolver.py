@@ -92,8 +92,94 @@ class TSPSolver:
 		algorithm</returns> 
 	'''
 
-	def greedy( self,time_allowance=60.0 ):
-		pass
+	def greedy(self, time_allowance=60.0):
+		bssf = None
+		cities = self._scenario.getCities()
+		self.numCities = len(cities)
+		solutionList = {}
+		startTime = time.time()
+
+		# Respect the time limit!
+		while time.time() - startTime < time_allowance:
+			# By using this indexLoop, the time required is increased, but
+			# it also means that we can find the lowest time from any starting point
+			# Time: O(n^2 log^2 n)
+			for indexLoop in range(len(cities)):
+				startCity = cities[indexLoop]
+				tourPath = []
+				tourPath.append(startCity)
+
+				# Deep copy to avoid modifying the original list of cities
+				# (We'll need it later)
+				remainingCities = copy.deepcopy(cities)
+				currentCity = startCity
+				del remainingCities[indexLoop]
+
+				# We'll be deleting the cities as we go, so once it's become
+				# zero, we can stop the loop.
+				# Time: O(n log^2 n)
+				while len(remainingCities):
+					cityCosts = self.getClosestCities(currentCity, remainingCities)
+
+					# Find the closest city (they're sorted, so it's the first item in the array)
+					closestCityInfo = cityCosts[0]
+					closestCityLoc = remainingCities.index(closestCityInfo[0])
+					closestCity = remainingCities[closestCityLoc]
+
+					# Make absolutely certain the edge ACTUALLY exists
+					if not self._scenario._edge_exists[currentCity._index][closestCity._index]:
+						break
+					del remainingCities[closestCityLoc]
+					tourPath.append(closestCity)
+
+					# Start the next iteration from this city
+					currentCity = closestCity
+
+				# If, for whatever reason, the tour is made impossible,
+				# continue on to the next starting point.
+				if (len(remainingCities)):
+					continue
+
+				# Once we've made a full tour, we create the results item
+				else:
+					bssf = TSPSolution(tourPath)
+					endTime = time.time()
+					results = {}
+					results['cost'] = bssf.cost
+					results['time'] = endTime - startTime
+					results['count'] = None
+					results['soln'] = bssf
+					results['max'] = None
+					results['total'] = None
+					results['pruned'] = None
+
+					# Put the results into the full list of solutions.
+					# We can find the lowest cost later.
+					solutionList[indexLoop] = results
+					continue
+
+			# Search for the  lowest cost among the solution list.
+			self.lowest_cost = float("inf")
+			for key, solution in solutionList.items():
+				if solution['cost'] < self.lowest_cost:
+					self.lowest_cost = solution['cost']
+					lowest = solution
+
+			# Return the lowest cost from among the found solutions.
+			return lowest
+
+	# Finds the distances between the current city and all of the other ones.
+	# Then sorts the array so we can quickly access the closest city.
+	# remainingCities allows us to exclude cities already passed in this tour
+	#
+	# Time Complexity: O(n log n), which is Python's sorted() command's time complexity
+	# Space Complexity: O(n), as it must store the array before returning it
+	def getClosestCities(self, city, remainingCities):
+		costs = {}
+		for destCity in remainingCities:
+			costs[destCity] = city.costTo(destCity)
+		sortedCosts = sorted(costs.items(), key=lambda item: item[1])
+		return sortedCosts
 
 
 	def reduceCost(self, matrix, avoidRows, avoidCols):
@@ -178,17 +264,17 @@ class TSPSolver:
 					childNode = (matrixnode(childMatrix, cost, path))
 					inserted = False
 					#Sort insert into the list
-					for j in range(len(listChildNodes)): #for 8 change to prio queue, and account for depth
-						if childNode.getBound() > listChildNodes[j].getBound():
-							listChildNodes.insert(j, childNode)
-							inserted = True
+					for j in range(len(self.priorityQueue)):
+						if childNode.getBound() > self.priorityQueue[j].getBound():
+							if len(path) < len(self.priorityQueue[j].getPath()):
+								self.priorityQueue.insert(j, childNode) #less depth, higher bound
+								inserted = True
 					if len(listChildNodes) == 0 or not inserted:
-						listChildNodes.append(childNode)
+						self.priorityQueue.append(childNode)
 				else:
 					self.totalPrunes += 1
 			else:
 				self.totalPrunes += 1
-		self.priorityQueue += listChildNodes
 
 	def checkQueueSize(self):
 		#Checking the max queue size every iteration
@@ -238,9 +324,6 @@ class TSPSolver:
 			finalPath = []
 			for i in range(len(bestPath)):
 				finalPath.append(self.cities[bestPath[i]])
-			'''for i in range(len(bestPath) - 1):
-				if initialMatrix[bestPath[i]][bestPath[i + 1]]  == math.inf:
-					print("oops")'''
 			self.bssf = TSPSolution(finalPath)
 		end_time = time.time()
 		results['cost'] = self.bssf.cost if foundTour else math.inf
@@ -265,7 +348,7 @@ class TSPSolver:
 		#500 random solutions
 		#comparisons
 		#takes out solutions
-		
+
 		pass
 		
 
