@@ -47,7 +47,7 @@ class TSPSolver:
 		solution found, and three null values for fields not used for this 
 		algorithm</returns> 
 	'''
-	
+
 	def defaultRandomTour( self, time_allowance=60.0 ):
 		results = {}
 		cities = self._scenario.getCities()
@@ -341,16 +341,83 @@ class TSPSolver:
 		<returns>results dictionary for GUI that contains three ints: cost of best solution, 
 		time spent to find best solution, total number of solutions found during search, the 
 		best solution found.  You may use the other three field however you like.
-		algorithm</returns> 
+		algorithm</returns>
 	'''
-	def fancy( self,time_allowance=60.0):
+	def fancy(self, time_allowance=60.0):
+		results = {}
+		count = 0
+		T = 30  # Starting temp
+		alpha = .99  # factor of Temperature's cooling
+
+		currentState = self.getInitialState()
+		self.bssf = currentState
+		temp = T
+		startTime = time.time()
+		tempThreshold = .1  # The loop ends when it cools to this temp (or time runs out)
+
+		while temp > tempThreshold and (time.time() - startTime) < time_allowance:
+			temp = temp * alpha
+
+			if currentState.cost != float("inf"):
+				count += 1
+
+			nextState = self.generateNextState()
+
+			improvedCost = currentState.cost - nextState.cost  # I switched these since we're looking for a min not a max.
+			# That makes sense mathematically, right?
+
+			if nextState.cost > self.bssf.cost:
+				self.bssf = nextState
+
+
+			if improvedCost > 0:
+				currentState = nextState
+			elif self.probabilityTest():
+				currentState = nextState
+
+
 		#annealing
 		#500 random solutions
 		#comparisons
 		#takes out solutions
+		endTime = time.time()
 
+		results['cost'] = self.bssf.cost
+		results['time'] = endTime - startTime
+		results['count'] = count
+		results['soln'] = self.bssf
+		results['max'] = None
+		results['total'] = None
+		results['pruned'] = None
+		return results
+
+	''' <summary>
+		Returns random permutation of cities (or could use default algorithm)
+		</summary>
+		<returns> TSP Solution </returns>
+	'''
+
+	def getInitialState(self):
 		pass
-		
+
+	''' <summary>
+		Swaps two random cities. When temp is high, swap can occur with any two cities. As temperature decreases, 
+		swaps occur between states that are closer and closer together. 
+		</summary>
+		<returns> TSP Solution </returns>
+	'''
+	def generateNextState(self):
+		pass
+
+	''' <summary>
+		checks to see if:
+				e^(improvedCost/temp) > random number between (0,1)
+		</summary>
+		<returns> Boolean </returns>
+	'''
+	def probabilityTest(self):
+		pass
+
 
 
 
