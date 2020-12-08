@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from typing import DefaultDict
 from which_pyqt import PYQT_VER
 if PYQT_VER == 'PYQT5':
 	from PyQt5.QtCore import QLineF, QPointF
@@ -398,7 +399,8 @@ class TSPSolver:
 	'''
 
 	def getInitialState(self):
-		pass
+		# return self.defaultRandomTour()
+		return self.greedy()
 
 	''' <summary>
 		Swaps two random cities. When temp is high, swap can occur with any two cities. As temperature decreases, 
