@@ -17,8 +17,6 @@ import numpy as np
 from TSPClasses import *
 import heapq
 import itertools
-import math
-import random
 import matrixnode
 from matrixnode import matrixnode
 import copy
@@ -346,24 +344,18 @@ class TSPSolver:
 		best solution found.  You may use the other three field however you like.
 		algorithm</returns>
 	'''
-
-	# Space complexity: O(n)
-	# Time complexity: greedy algorithm + while loop * (generateNextState() + probabilityTest())
-	#                       ?           +    O(1)    * (       ?             +     O(1)        )
 	def fancy(self, time_allowance=60.0):
 		results = {}
 		count = 0
 		T = 30  # Starting temp
 		alpha = .99  # factor of Temperature's cooling
 
-		# time/space complexity = greedy algorithm
 		currentState = self.getInitialState()
 		self.bssf = currentState
 		temp = T
 		startTime = time.time()
 		tempThreshold = .1  # The loop ends when it cools to this temp (or time runs out)
 
-		# Space complexity: At most stores 3 full states (bssf, current, and next). O(3*n) = O(n)
 		while temp > tempThreshold and (time.time() - startTime) < time_allowance:
 			temp = temp * alpha
 
@@ -381,7 +373,7 @@ class TSPSolver:
 
 			if improvedCost > 0:
 				currentState = nextState
-			elif self.probabilityTest():  # time/space O(1)
+			elif self.probabilityTest():
 				currentState = nextState
 
 
@@ -425,32 +417,8 @@ class TSPSolver:
 		</summary>
 		<returns> Boolean </returns>
 	'''
-
-	# Checks whether the algorithm will change its state despite the
-	# higher cost. This prevents the algorithm from getting stuck in
-	# a local minimum.
-	#
-	# Returns True when the value of e^(improvedCost/temp) is greater
-	# than the random number, meaning that the algorithm should change states.
-	# Returns False otherwise, meaning that the algorithm should NOT
-	# change states.
-	#
-	# Note that as the improvedCost becomes more negative, the algorithm
-	# is less likely to change the state.
-	# Also, as the "temperature" decreases, the algorithm is less likely
-	# to change its state.
-	#
-	# Time Complexity: O(1), as it simply takes two variables and does some math.
-	# Space Complexity: O(1), as it stores only two variables.
-	def probabilityTest(improvedCost, temp):
-		checkedValue = math.exp(improvedCost / temp)
-		randomValue = random.random()
-		print(checkedValue, " > ", randomValue, " ?")
-		if checkedValue > randomValue:
-			return True
-		else:
-			return False
-
+	def probabilityTest(self):
+		pass
 
 
 
