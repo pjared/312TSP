@@ -17,6 +17,8 @@ import numpy as np
 from TSPClasses import *
 import heapq
 import itertools
+import math
+import random
 import matrixnode
 from matrixnode import matrixnode
 import copy
