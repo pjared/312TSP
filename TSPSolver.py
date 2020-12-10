@@ -37,6 +37,9 @@ class TSPSolver:
 		self.maxQueSize = 0
 		self.totalStates = 0
 		self.cities = []
+		self.bestGreedPath = None
+		self.citiesMatrix = None
+		self.listPaths = []
 		# 12
 
 
@@ -158,14 +161,16 @@ class TSPSolver:
 
 					# Put the results into the full list of solutions.
 					# We can find the lowest cost later.
-					solutionList[indexLoop] = results
+					solutionList[indexLoop] = results #should this be solutionsList.append()?
 					continue
 
 			# Search for the  lowest cost among the solution list.
 			self.lowest_cost = float("inf")
+			self.bestGreedPath = None
 			for key, solution in solutionList.items():
 				if solution['cost'] < self.lowest_cost:
 					self.lowest_cost = solution['cost']
+					self.bestGreedPath = solution['soln'].route #Used for annealing algorithm
 					lowest = solution
 
 			# Return the lowest cost from among the found solutions.
@@ -346,6 +351,14 @@ class TSPSolver:
 		best solution found.  You may use the other three field however you like.
 		algorithm</returns>
 	'''
+	def toPath(self, path):
+		numberedPath = []
+		for i in range(len(path)):
+			for j in range(len(self.cities)):
+				if path[i] == self.cities[j]:
+					numberedPath.append(j)
+		return numberedPath
+
 
 	# Space complexity: O(n)
 	# Time complexity: greedy algorithm + while loop * (generateNextState() + probabilityTest())
@@ -359,18 +372,27 @@ class TSPSolver:
 		# time/space complexity = greedy algorithm
 		currentState = self.getInitialState()
 		self.bssf = currentState
+		self.cities = self._scenario.getCities()
 		temp = T
 		startTime = time.time()
 		tempThreshold = .1  # The loop ends when it cools to this temp (or time runs out)
 
+		#initialize a matrix to work with
+		self.citiesMatrix = [[0 for x in range(self.numCities)] for y in range(self.numCities)]
+		for i in range(len(self.cities)):
+			for j in range(len(self.cities)):
+				self.citiesMatrix[i][j] = self.cities[i].costTo(self.cities[j])
+
 		# Space complexity: At most stores 3 full states (bssf, current, and next). O(3*n) = O(n)
+		basePath = self.toPath(self.bestGreedPath)
+		self.listPaths.append(basePath)
 		while temp > tempThreshold and (time.time() - startTime) < time_allowance:
 			temp = temp * alpha
 
 			if currentState.cost != float("inf"):
 				count += 1
 
-			nextState = self.generateNextState()
+			nextState, basePath = self.generateNextState(basePath)
 
 			improvedCost = currentState.cost - nextState.cost  # I switched these since we're looking for a min not a max.
 			# That makes sense mathematically, right?
@@ -381,7 +403,7 @@ class TSPSolver:
 
 			if improvedCost > 0:
 				currentState = nextState
-			elif self.probabilityTest():  # time/space O(1)
+			elif self.probabilityTest(temp):  # time/space O(1)
 				currentState = nextState
 
 
@@ -406,6 +428,8 @@ class TSPSolver:
 		<returns> TSP Solution </returns>
 	'''
 
+
+
 	def getInitialState(self):
 		# return self.defaultRandomTour()
 		return self.greedy()
@@ -416,8 +440,58 @@ class TSPSolver:
 		</summary>
 		<returns> TSP Solution </returns>
 	'''
-	def generateNextState(self):
-		pass
+	def checkValidPath(self, path, index):
+		#path[index] gives us the row
+		if index != 0: #make sure its not the first index to not go out of bounds
+			if self.citiesMatrix[path[index]][path[index - 1]] == math.inf: #check the city before
+				return False
+		if index != len(self.cities - 1): #bound checking
+			if self.citiesMatrix[path[index]][path[index + 1]] == math.inf: #check the city after
+				return False
+		return True #TODO: make sure this works when running it all
+
+	def toRealPath(self, path): #converts num vals back to city objects
+		pathCities = []
+		for i in range(len(path)):
+			pathCities.append(self.cities[path[i]])
+		return pathCities #TODO:make sure this works when running it all
+
+	def generateNextState(self, path):
+		randNum = random.randint(0, self.numCities - 1) #get a random city to pivot swap on #TODO: Check logic -1
+		if(randNum == self.lastRand): #check to make sure we haven't done same rand twice(to avoid doing same paths again)
+			randNum = (randNum + 1) % (self.numCities - 1) #TODO:Needed? Explain avoiding double inf routes
+		citnum = path[randNum]  # Get the city num
+		cityIndex = randNum #pivot point for swaps
+		toSwapList = []
+		for i in range(self.numCities): #TODO: Check logic -1
+			if i != cityIndex:
+				toSwapList.append(i)  # Make a list of cities to swap with
+		foundValid = False
+		for i in range(len(toSwapList)): #iterate through list of cities to swap with
+			tempPath = copy.deepcopy(path) #copy it
+			index = toSwapList[i]
+			tempPath[index] = citnum #set city to pivot city
+			tempPath[cityIndex] = path[index] #set privot to other city
+			if tempPath in self.listPaths: #TODO: Is this line gonna interfere?
+				continue  #make sure we haven't done this swap already
+			self.listPaths.append(tempPath)
+			if (self.checkValidPath(tempPath, index) and self.checkValidPath(tempPath, cityIndex)):
+				#the above if statement is checking if the swap is still a valid path
+				foundValid = True
+				path = tempPath
+				self.lastRand = -1
+				break
+		if not foundValid: #Didn't find any good path, randomize the swap
+			self.lastRand = randNum
+			#TODO:Check this logic
+			randSwapNum = random.randint(0, randNum - 1) #TODO:check this logic
+			index = path[(randNum + randSwapNum) % (self.numCities - 1)] # get the index of the city to swap with
+			temp = path[index]
+			path[index] = citnum
+			path[cityIndex] = temp
+
+		bssf = TSPSolution(self.toRealPath(path))
+		return bssf, path
 
 	''' <summary>
 		checks to see if:
@@ -450,8 +524,5 @@ class TSPSolver:
 			return True
 		else:
 			return False
-
-
-
 
 
