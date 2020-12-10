@@ -392,6 +392,7 @@ class TSPSolver:
 			if currentState.cost != float("inf"):
 				count += 1
 
+			initalBasePath = basePath  #save the current path
 			nextState, basePath = self.generateNextState(basePath)
 
 			improvedCost = currentState.cost - nextState.cost  # I switched these since we're looking for a min not a max.
@@ -405,6 +406,8 @@ class TSPSolver:
 				currentState = nextState
 			elif self.probabilityTest(temp):  # time/space O(1)
 				currentState = nextState
+			else: #We don't go to the next state, so keep the path
+				basePath = initalBasePath
 
 
 		#annealing
@@ -440,22 +443,34 @@ class TSPSolver:
 		</summary>
 		<returns> TSP Solution </returns>
 	'''
+	'''<summary>
+		time complexity: O(1)
+		Space complexity: O(1)
+	'''
 	def checkValidPath(self, path, index):
 		#path[index] gives us the row
-		if index != 0: #make sure its not the first index to not go out of bounds
+		if index != 0: #Bound check
 			if self.citiesMatrix[path[index]][path[index - 1]] == math.inf: #check the city before
 				return False
-		if index != len(self.cities - 1): #bound checking
+		if index != len(self.cities - 1): #bound check
 			if self.citiesMatrix[path[index]][path[index + 1]] == math.inf: #check the city after
 				return False
 		return True #TODO: make sure this works when running it all
 
+	'''<summary>
+		time complexity: O(N)
+		Space complexity: O(1)
+	'''
 	def toRealPath(self, path): #converts num vals back to city objects
 		pathCities = []
 		for i in range(len(path)):
 			pathCities.append(self.cities[path[i]])
 		return pathCities #TODO:make sure this works when running it all
 
+	'''<summary>
+		time complexity: O(N * b^n) because for loop of swapping and checking if path has been ran
+		Space complexity: O(1)
+	'''
 	def generateNextState(self, path):
 		randNum = random.randint(0, self.numCities - 1) #get a random city to pivot swap on #TODO: Check logic -1
 		if(randNum == self.lastRand): #check to make sure we haven't done same rand twice(to avoid doing same paths again)
@@ -467,8 +482,8 @@ class TSPSolver:
 			if i != cityIndex:
 				toSwapList.append(i)  # Make a list of cities to swap with
 		foundValid = False
+		tempPath = copy.deepcopy(path)  # copy it
 		for i in range(len(toSwapList)): #iterate through list of cities to swap with
-			tempPath = copy.deepcopy(path) #copy it
 			index = toSwapList[i]
 			tempPath[index] = citnum #set city to pivot city
 			tempPath[cityIndex] = path[index] #set privot to other city
@@ -481,6 +496,9 @@ class TSPSolver:
 				path = tempPath
 				self.lastRand = -1
 				break
+			else: #Doing this to keep time complexity O(N)
+				tempPath[cityIndex] = citnum
+				tempPath[index] = path[index]
 		if not foundValid: #Didn't find any good path, randomize the swap
 			self.lastRand = randNum
 			#TODO:Check this logic
