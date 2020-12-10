@@ -368,6 +368,7 @@ class TSPSolver:
 		count = 0
 		T = 30  # Starting temp
 		alpha = .99  # factor of Temperature's cooling
+		self.lastRand = 1	# ?? This needs to be initialized to some value
 
 		# time/space complexity = greedy algorithm
 		currentState = self.getInitialState()
@@ -389,7 +390,7 @@ class TSPSolver:
 		while temp > tempThreshold and (time.time() - startTime) < time_allowance:
 			temp = temp * alpha
 
-			if currentState.cost != float("inf"):
+			if currentState['cost'] != float("inf"):
 				count += 1
 
 			initalBasePath = basePath  #save the current path
