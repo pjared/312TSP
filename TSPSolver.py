@@ -104,6 +104,7 @@ class TSPSolver:
 		self.numCities = len(cities)
 		solutionList = {}
 		startTime = time.time()
+		self.cities = copy.deepcopy(cities)
 
 		# Respect the time limit!
 		while time.time() - startTime < time_allowance:
@@ -355,7 +356,7 @@ class TSPSolver:
 		numberedPath = []
 		for i in range(len(path)):
 			for j in range(len(self.cities)):
-				if path[i] == self.cities[j]:
+				if path[i]._name == self.cities[j]._name:
 					numberedPath.append(j)
 		return numberedPath
 
@@ -373,7 +374,7 @@ class TSPSolver:
 		# time/space complexity = greedy algorithm
 		currentState = self.getInitialState()
 		self.bssf = currentState
-		self.cities = self._scenario.getCities()
+		#self.cities = self._scenario.getCities()
 		temp = T
 		startTime = time.time()
 		tempThreshold = .1  # The loop ends when it cools to this temp (or time runs out)
@@ -386,26 +387,31 @@ class TSPSolver:
 
 		# Space complexity: At most stores 3 full states (bssf, current, and next). O(3*n) = O(n)
 		basePath = self.toPath(self.bestGreedPath)
-		self.listPaths.append(basePath)
+		self.listPaths.append(self.bestGreedPath)
+		currentState = TSPSolution(self.bestGreedPath)
+		self.bssf = currentState
 		while temp > tempThreshold and (time.time() - startTime) < time_allowance:
 			temp = temp * alpha
 
-			if currentState['cost'] != float("inf"):
+			#if currentState['cost'] != float("inf"):
+			if currentState.cost != float("inf"):
 				count += 1
 
 			initalBasePath = basePath  #save the current path
 			nextState, basePath = self.generateNextState(basePath)
 
+			#curstateCost =  currentState.cost
+			#nextStateCost =  nextState.cost
 			improvedCost = currentState.cost - nextState.cost  # I switched these since we're looking for a min not a max.
 			# That makes sense mathematically, right?
 
-			if nextState.cost > self.bssf.cost:
+			if nextState.cost < self.bssf.cost:
 				self.bssf = nextState
 
 
 			if improvedCost > 0:
 				currentState = nextState
-			elif self.probabilityTest(temp):  # time/space O(1)
+			elif self.probabilityTest(improvedCost, temp):  # time/space O(1)
 				currentState = nextState
 			else: #We don't go to the next state, so keep the path
 				basePath = initalBasePath
@@ -453,7 +459,8 @@ class TSPSolver:
 		if index != 0: #Bound check
 			if self.citiesMatrix[path[index]][path[index - 1]] == math.inf: #check the city before
 				return False
-		if index != len(self.cities - 1): #bound check
+			return True
+		if index != len(self.cities) - 1: #bound check
 			if self.citiesMatrix[path[index]][path[index + 1]] == math.inf: #check the city after
 				return False
 		return True #TODO: make sure this works when running it all
@@ -466,6 +473,7 @@ class TSPSolver:
 		pathCities = []
 		for i in range(len(path)):
 			pathCities.append(self.cities[path[i]])
+		pathCities.append(self.cities[path[0]])
 		return pathCities #TODO:make sure this works when running it all
 
 	'''<summary>
@@ -473,7 +481,7 @@ class TSPSolver:
 		Space complexity: O(1)
 	'''
 	def generateNextState(self, path):
-		randNum = random.randint(0, self.numCities - 1) #get a random city to pivot swap on #TODO: Check logic -1
+		randNum = random.randint(0, self.numCities - 1) #get a random number to pivot swap on #TODO: Check logic -1
 		if(randNum == self.lastRand): #check to make sure we haven't done same rand twice(to avoid doing same paths again)
 			randNum = (randNum + 1) % (self.numCities - 1) #TODO:Needed? Explain avoiding double inf routes
 		citnum = path[randNum]  # Get the city num
@@ -503,7 +511,7 @@ class TSPSolver:
 		if not foundValid: #Didn't find any good path, randomize the swap
 			self.lastRand = randNum
 			#TODO:Check this logic
-			randSwapNum = random.randint(0, randNum - 1) #TODO:check this logic
+			randSwapNum = random.randint(0, self.numCities - randNum) #TODO:check this logic
 			index = path[(randNum + randSwapNum) % (self.numCities - 1)] # get the index of the city to swap with
 			temp = path[index]
 			path[index] = citnum
@@ -535,7 +543,7 @@ class TSPSolver:
 	#
 	# Time Complexity: O(1), as it simply takes two variables and does some math.
 	# Space Complexity: O(1), as it stores only two variables.
-	def probabilityTest(improvedCost, temp):
+	def probabilityTest(self, improvedCost, temp):
 		checkedValue = math.exp(improvedCost / temp)
 		randomValue = random.random()
 		print(checkedValue, " > ", randomValue, " ?")
